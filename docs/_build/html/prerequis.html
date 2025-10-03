@@ -43,20 +43,6 @@
 utilisateur <strong>libevl</strong>, et valider par des <strong>mesures</strong> de latence.</p></li>
 </ul>
 </section>
-<section id="concepts-cles-vue-densemble">
-<h2>Concepts clés (vue d’ensemble)<a class="headerlink" href="#concepts-cles-vue-densemble" title="Link to this heading">¶</a></h2>
-<ul class="simple">
-<li><p><strong>EVL</strong> (Embedded Virtual Linux) : cœur temps réel <strong>out-of-band</strong> (OOB) qui
-préempte Linux via la <strong>pipeline IRQ</strong> (Dovetail). Il traite les tâches
-critiques <strong>avant</strong> le noyau Linux (<em>in-band</em>).</p></li>
-<li><p><strong>/dev</strong> (devtmpfs) : EVL expose des périphériques caractères
-(ex. <code class="docutils literal notranslate"><span class="pre">/dev/evl/control</span></code>). Le montage automatique de <strong>devtmpfs</strong>
-crée ces nœuds au boot.</p></li>
-<li><p><strong>Chaîne de boot</strong> : le noyau doit <strong>voir</strong> le disque racine (ex. NVMe)
-et <strong>lire</strong> le système de fichiers (ex. ext4) <strong>dès le démarrage</strong>. Pour éviter
-les blocages, on compile <strong>en intégré (=y)</strong> les pilotes <strong>NVMe/PCI</strong> et <strong>EXT4</strong>.</p></li>
-</ul>
-</section>
 <section id="paquets-de-build">
 <h2>Paquets de build<a class="headerlink" href="#paquets-de-build" title="Link to this heading">¶</a></h2>
 <p>Installer les outils nécessaires :</p>
@@ -100,7 +86,6 @@ git<span class="w"> </span>clone<span class="w"> </span>--depth<span class="o">=
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Pré-requis &amp; principes</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#contexte">Contexte</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#concepts-cles-vue-densemble">Concepts clés (vue d’ensemble)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#paquets-de-build">Paquets de build</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#sources-gitlab">Sources (GitLab)</a></li>
 </ul>

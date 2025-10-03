@@ -11,19 +11,6 @@ Contexte
 - Objectif : compiler et installer un noyau **EVL** (Xenomai 4), puis l’espace
   utilisateur **libevl**, et valider par des **mesures** de latence.
 
-Concepts clés (vue d’ensemble)
-------------------------------
-
-- **EVL** (Embedded Virtual Linux) : cœur temps réel **out-of-band** (OOB) qui
-  préempte Linux via la **pipeline IRQ** (Dovetail). Il traite les tâches
-  critiques **avant** le noyau Linux (*in-band*).
-- **/dev** (devtmpfs) : EVL expose des périphériques caractères
-  (ex. ``/dev/evl/control``). Le montage automatique de **devtmpfs**
-  crée ces nœuds au boot.
-- **Chaîne de boot** : le noyau doit **voir** le disque racine (ex. NVMe)
-  et **lire** le système de fichiers (ex. ext4) **dès le démarrage**. Pour éviter
-  les blocages, on compile **en intégré (=y)** les pilotes **NVMe/PCI** et **EXT4**.
-
 Paquets de build
 ----------------
 
