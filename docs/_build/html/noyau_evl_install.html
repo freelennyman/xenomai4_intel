@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+
+<html lang="fr" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Noyau EVL (Xenomai 4) — Build &amp; installation &#8212; Documentation Xenomai 4 for intel 2025</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=4f649999" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=cb25574f" />
+    <script src="_static/documentation_options.js?v=431bb043"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/translations.js?v=d99ca74e"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Recherche" href="search.html" />
+    <link rel="next" title="Espace utilisateur — libevl &amp; dépendances" href="libevl_userland.html" />
+    <link rel="prev" title="Pré-requis &amp; principes" href="prerequis.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="noyau-evl-xenomai-4-build-installation">
+<h1>Noyau EVL (Xenomai 4) — Build &amp; installation<a class="headerlink" href="#noyau-evl-xenomai-4-build-installation" title="Link to this heading">¶</a></h1>
+<section id="configuration-minimale-indispensable">
+<h2>Configuration minimale <strong>indispensable</strong><a class="headerlink" href="#configuration-minimale-indispensable" title="Link to this heading">¶</a></h2>
+<p>Depuis l’arbre <code class="docutils literal notranslate"><span class="pre">~/rt/linux-evl</span></code> :</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>~/rt/linux-evl
+
+<span class="c1"># Configuration de base : garantit x86_64 (ou partez d&#39;une config pour votre infrastructure)</span>
+
+make<span class="w"> </span>x86_64_defconfig
+
+<span class="c1"># EVL + Dovetail + outils de bench</span>
+./scripts/config<span class="w"> </span>--enable<span class="w"> </span>EVL<span class="w"> </span>--enable<span class="w"> </span>DOVETAIL<span class="w"> </span><span class="se">\</span>
+<span class="w">                 </span>--enable<span class="w"> </span>EVL_LATMUS<span class="w"> </span>--enable<span class="w"> </span>EVL_HECTIC
+
+<span class="c1"># /dev auto + initramfs lisible + audit config</span>
+./scripts/config<span class="w"> </span>--enable<span class="w"> </span>DEVTMPFS<span class="w"> </span>--enable<span class="w"> </span>DEVTMPFS_MOUNT<span class="w"> </span><span class="se">\</span>
+<span class="w">                 </span>--enable<span class="w"> </span>BLK_DEV_INITRD<span class="w"> </span>--enable<span class="w"> </span>RD_GZIP<span class="w"> </span>--enable<span class="w"> </span>RD_ZSTD<span class="w"> </span><span class="se">\</span>
+<span class="w">                 </span>--enable<span class="w"> </span>IKCONFIG<span class="w"> </span>--enable<span class="w"> </span>IKCONFIG_PROC
+
+<span class="c1"># Chaîne de boot intégrée (ex. NVMe + ext4)</span>
+./scripts/config<span class="w"> </span>--enable<span class="w"> </span>BLK_DEV_NVME<span class="w"> </span>--enable<span class="w"> </span>NVME_PCI<span class="w"> </span>--enable<span class="w"> </span>EXT4_FS
+
+yes<span class="w"> </span><span class="s2">&quot;&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>make<span class="w"> </span>olddefconfig
+</pre></div>
+</div>
+<p>Vérification rapide pour voir si tout est activé :</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">&#39;^CONFIG_(EVL|DOVETAIL|EVL_LATMUS|EVL_HECTIC|DEVTMPFS|BLK_DEV_NVME|NVME_PCI|EXT4_FS)=&#39;</span><span class="w"> </span>.config
+</pre></div>
+</div>
+</section>
+<section id="compilation-en-paquets-debian">
+<h2>Compilation en paquets Debian<a class="headerlink" href="#compilation-en-paquets-debian" title="Link to this heading">¶</a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">LOCALVERSION</span><span class="o">=</span>-evl
+<span class="nb">export</span><span class="w"> </span><span class="nv">LOCALVERSION_AUTO</span><span class="o">=</span>n<span class="w">   </span><span class="c1"># noms de paquets sans suffixe -g&lt;sha&gt;, plus lisibles</span>
+make<span class="w"> </span>-j<span class="s2">&quot;</span><span class="k">$(</span>nproc<span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>bindeb-pkg
+</pre></div>
+</div>
+<p>Les paquets sont produits <strong>dans le dossier parent</strong> (<code class="docutils literal notranslate"><span class="pre">~/rt</span></code>). Installer :</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>..
+<span class="c1"># on remplace les étoiles par les images correspondantes après avoir fait le make pour les paquets Debian</span>
+sudo<span class="w"> </span>dpkg<span class="w"> </span>-i<span class="w"> </span>linux-image-6.12.30-evl_*.deb<span class="w"> </span>linux-headers-6.12.30-evl_*.deb
+sudo<span class="w"> </span>update-grub
+</pre></div>
+</div>
+</section>
+<section id="redemarrage-controles">
+<h2>Redémarrage &amp; contrôles<a class="headerlink" href="#redemarrage-controles" title="Link to this heading">¶</a></h2>
+<p>Au boot, choisir <strong>Ubuntu, with Linux 6.12.30-evl</strong>. Après login :</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uname<span class="w"> </span>-r<span class="w">                 </span><span class="c1"># doit contenir 6.12.30-evl</span>
+ls<span class="w"> </span>-l<span class="w"> </span>/dev/evl<span class="w">           </span><span class="c1"># doit afficher au moins control / clone</span>
+evl<span class="w"> </span>ps<span class="w">                   </span><span class="c1"># doit répondre</span>
+</pre></div>
+</div>
+<p>Si <code class="docutils literal notranslate"><span class="pre">/dev/evl</span></code> n’apparaît pas, vérifier :</p>
+<ul class="simple">
+<li><p><strong>EVL</strong> activé (<code class="docutils literal notranslate"><span class="pre">CONFIG_EVL=y</span></code>) dans <code class="docutils literal notranslate"><span class="pre">/boot/config-$(uname</span> <span class="pre">-r)</span></code>.</p></li>
+<li><p>Ajouter au besoin <code class="docutils literal notranslate"><span class="pre">evl.state=started</span></code> dans <code class="docutils literal notranslate"><span class="pre">/etc/default/grub</span></code> :</p></li>
+</ul>
+</section>
+<section id="erreurs-frequentes-et-solutions-noyau">
+<h2>Erreurs fréquentes et solutions (noyau)<a class="headerlink" href="#erreurs-frequentes-et-solutions-noyau" title="Link to this heading">¶</a></h2>
+<p><strong>Si vous avez un blocage à “Loading initial ramdisk” au boot</strong></p>
+<ul class="simple">
+<li><p>Cause principale : pilotes <strong>NVMe</strong> ou <strong>EXT4</strong> manquants dans le noyau/ initramfs.</p></li>
+<li><p>Fix : s’assurer que <code class="docutils literal notranslate"><span class="pre">CONFIG_BLK_DEV_NVME=y</span></code>, <code class="docutils literal notranslate"><span class="pre">CONFIG_NVME_PCI=y</span></code>, <code class="docutils literal notranslate"><span class="pre">CONFIG_EXT4_FS=y</span></code> puis recompiler.</p></li>
+</ul>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">Xenomai 4 for intel</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Sommaire</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="prerequis.html">Pré-requis &amp; principes</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Noyau EVL (Xenomai 4) — Build &amp; installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#configuration-minimale-indispensable">Configuration minimale <strong>indispensable</strong></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#compilation-en-paquets-debian">Compilation en paquets Debian</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#redemarrage-controles">Redémarrage &amp; contrôles</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#erreurs-frequentes-et-solutions-noyau">Erreurs fréquentes et solutions (noyau)</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="libevl_userland.html">Espace utilisateur — libevl &amp; dépendances</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mesures_outillage.html">Mesures &amp; outillage</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="prerequis.html" title="Chapitre précédent">Pré-requis &amp; principes</a></li>
+      <li>Next: <a href="libevl_userland.html" title="Chapitre suivant">Espace utilisateur — libevl &amp; dépendances</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Recherche rapide</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2025, OUDET Lenny.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.2.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/noyau_evl_install.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

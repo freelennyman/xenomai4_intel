@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+
+<html lang="fr" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Pré-requis &amp; principes &#8212; Documentation Xenomai 4 for intel 2025</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=4f649999" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=cb25574f" />
+    <script src="_static/documentation_options.js?v=431bb043"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/translations.js?v=d99ca74e"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Recherche" href="search.html" />
+    <link rel="next" title="Noyau EVL (Xenomai 4) — Build &amp; installation" href="noyau_evl_install.html" />
+    <link rel="prev" title="Xenomai 4 / EVL sur Ubuntu (Intel) — Guide complet" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="pre-requis-principes">
+<h1>Pré-requis &amp; principes<a class="headerlink" href="#pre-requis-principes" title="Link to this heading">¶</a></h1>
+<section id="contexte">
+<h2>Contexte<a class="headerlink" href="#contexte" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Distribution : <strong>Ubuntu 24.04 LTS</strong> (amd64).</p></li>
+<li><p>Machine cible : <strong>x86_64 Intel</strong> (ex. laptop avec SSD <strong>NVMe</strong>, racine en <strong>ext4</strong>).</p></li>
+<li><p>Objectif : compiler et installer un noyau <strong>EVL</strong> (Xenomai 4), puis l’espace
+utilisateur <strong>libevl</strong>, et valider par des <strong>mesures</strong> de latence.</p></li>
+</ul>
+</section>
+<section id="concepts-cles-vue-densemble">
+<h2>Concepts clés (vue d’ensemble)<a class="headerlink" href="#concepts-cles-vue-densemble" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><strong>EVL</strong> (Embedded Virtual Linux) : cœur temps réel <strong>out-of-band</strong> (OOB) qui
+préempte Linux via la <strong>pipeline IRQ</strong> (Dovetail). Il traite les tâches
+critiques <strong>avant</strong> le noyau Linux (<em>in-band</em>).</p></li>
+<li><p><strong>/dev</strong> (devtmpfs) : EVL expose des périphériques caractères
+(ex. <code class="docutils literal notranslate"><span class="pre">/dev/evl/control</span></code>). Le montage automatique de <strong>devtmpfs</strong>
+crée ces nœuds au boot.</p></li>
+<li><p><strong>Chaîne de boot</strong> : le noyau doit <strong>voir</strong> le disque racine (ex. NVMe)
+et <strong>lire</strong> le système de fichiers (ex. ext4) <strong>dès le démarrage</strong>. Pour éviter
+les blocages, on compile <strong>en intégré (=y)</strong> les pilotes <strong>NVMe/PCI</strong> et <strong>EXT4</strong>.</p></li>
+</ul>
+</section>
+<section id="paquets-de-build">
+<h2>Paquets de build<a class="headerlink" href="#paquets-de-build" title="Link to this heading">¶</a></h2>
+<p>Installer les outils nécessaires :</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>apt<span class="w"> </span>update
+sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>build-essential<span class="w"> </span>bc<span class="w"> </span>bison<span class="w"> </span>flex<span class="w"> </span>libssl-dev<span class="w"> </span>libelf-dev<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>libncurses-dev<span class="w"> </span>dwarves<span class="w"> </span>git<span class="w"> </span>debhelper<span class="w"> </span>devscripts<span class="w"> </span>fakeroot<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>pkg-config<span class="w"> </span>meson<span class="w"> </span>ninja-build
+</pre></div>
+</div>
+</section>
+<section id="sources-gitlab">
+<h2>Sources (GitLab)<a class="headerlink" href="#sources-gitlab" title="Link to this heading">¶</a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>mkdir<span class="w"> </span>-p<span class="w"> </span>~/rt<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>~/rt
+<span class="c1"># Noyau EVL (choisir un tag EVL stable)</span>
+git<span class="w"> </span>clone<span class="w"> </span>--depth<span class="o">=</span><span class="m">1</span><span class="w"> </span>--branch<span class="w"> </span>v6.12.30-evl5<span class="w"> </span>https://gitlab.com/xenomai/xenomai4/linux-evl.git
+<span class="c1"># Espace utilisateur libevl (r55 au moment du guide, compatible)</span>
+git<span class="w"> </span>clone<span class="w"> </span>--depth<span class="o">=</span><span class="m">1</span><span class="w"> </span>--branch<span class="w"> </span>r55<span class="w"> </span>https://gitlab.com/xenomai/xenomai4/libevl.git
+</pre></div>
+</div>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">Xenomai 4 for intel</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Sommaire</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Pré-requis &amp; principes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#contexte">Contexte</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#concepts-cles-vue-densemble">Concepts clés (vue d’ensemble)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#paquets-de-build">Paquets de build</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#sources-gitlab">Sources (GitLab)</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="noyau_evl_install.html">Noyau EVL (Xenomai 4) — Build &amp; installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="libevl_userland.html">Espace utilisateur — libevl &amp; dépendances</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mesures_outillage.html">Mesures &amp; outillage</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="Chapitre précédent">Xenomai 4 / EVL sur Ubuntu (Intel) — Guide complet</a></li>
+      <li>Next: <a href="noyau_evl_install.html" title="Chapitre suivant">Noyau EVL (Xenomai 4) — Build &amp; installation</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Recherche rapide</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2025, OUDET Lenny.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.2.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/prerequis.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
