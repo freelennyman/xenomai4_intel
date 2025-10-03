@@ -46,4 +46,5 @@ jobs:
       - id: deployment
         uses: actions/deploy-pages@v4
       - name: Show URL in run summary
-        run: echo "🔗 Docs: ${{ steps.deployment.outputs.page_url }}" >> $GITHUB_STEP_SUMMARY
+        run: |
+          echo "Docs URL: ${{ steps.deployment.outputs.page_url }}" >> "$GITHUB_STEP_SUMMARY"
