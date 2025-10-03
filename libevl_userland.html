@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+
+<html lang="fr" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Espace utilisateur — libevl &amp; dépendances &#8212; Documentation Xenomai 4 for intel 2025</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <script src="_static/documentation_options.js?v=431bb043"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/translations.js?v=e6b791cb"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Recherche" href="search.html" />
+    <link rel="next" title="Mesures &amp; outillage" href="mesures_outillage.html" />
+    <link rel="prev" title="Noyau EVL (Xenomai 4) — Build &amp; installation" href="noyau_evl_install.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="espace-utilisateur-libevl-dependances">
+<h1>Espace utilisateur — libevl &amp; dépendances<a class="headerlink" href="#espace-utilisateur-libevl-dependances" title="Lien vers cette rubrique">¶</a></h1>
+<section id="but">
+<h2>But<a class="headerlink" href="#but" title="Lien vers cette rubrique">¶</a></h2>
+<p>Installer l’<strong>API utilisateur</strong> et les <strong>outils</strong> EVL : <code class="docutils literal notranslate"><span class="pre">evl</span></code>, <code class="docutils literal notranslate"><span class="pre">latmus</span></code>, <code class="docutils literal notranslate"><span class="pre">hectic</span></code>, etc.</p>
+</section>
+<section id="dependance-critique-libbpf">
+<h2>Dépendance critique : libbpf<a class="headerlink" href="#dependance-critique-libbpf" title="Lien vers cette rubrique">¶</a></h2>
+<p>Sur Ubuntu, la <code class="docutils literal notranslate"><span class="pre">libbpf</span></code> des dépôts peut être <strong>trop ancienne</strong> (ex. 0.5).
+Or libevl requiert des APIs <strong>≥ 0.6</strong>. Installer <strong>libbpf 1.x</strong> depuis les sources :</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>libelf-dev<span class="w"> </span>zlib1g-dev
+<span class="nb">cd</span><span class="w"> </span>~/rt
+git<span class="w"> </span>clone<span class="w"> </span>--depth<span class="o">=</span><span class="m">1</span><span class="w"> </span>--branch<span class="w"> </span>v1.6.2<span class="w"> </span>https://github.com/libbpf/libbpf.git
+<span class="nb">cd</span><span class="w"> </span>libbpf/src
+make<span class="w"> </span>-j<span class="s2">&quot;</span><span class="k">$(</span>nproc<span class="k">)</span><span class="s2">&quot;</span>
+sudo<span class="w"> </span>make<span class="w"> </span>install<span class="w"> </span><span class="nv">PREFIX</span><span class="o">=</span>/usr<span class="w"> </span><span class="nv">LIBDIR</span><span class="o">=</span>/usr/lib/x86_64-linux-gnu
+sudo<span class="w"> </span>ldconfig
+pkg-config<span class="w"> </span>--modversion<span class="w"> </span>libbpf<span class="w">   </span><span class="c1"># doit afficher 1.x</span>
+</pre></div>
+</div>
+</section>
+<section id="compilation-installation-de-libevl">
+<h2>Compilation &amp; installation de libevl<a class="headerlink" href="#compilation-installation-de-libevl" title="Lien vers cette rubrique">¶</a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>~/rt/libevl
+rm<span class="w"> </span>-rf<span class="w"> </span>build<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>mkdir<span class="w"> </span>build<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>build
+
+
+meson<span class="w"> </span>setup<span class="w"> </span>-Dbuildtype<span class="o">=</span>release<span class="w"> </span>-Dprefix<span class="o">=</span>/usr<span class="w"> </span>-Duapi<span class="o">=</span>~/rt/linux-evl<span class="w"> </span>-Dwerror<span class="o">=</span><span class="nb">false</span><span class="w"> </span>..
+meson<span class="w"> </span>compile
+sudo<span class="w"> </span>ninja<span class="w"> </span>install
+sudo<span class="w"> </span>ldconfig
+</pre></div>
+</div>
+</section>
+<section id="acces-non-root-aux-devices-evl">
+<h2>Accès non-root aux devices EVL<a class="headerlink" href="#acces-non-root-aux-devices-evl" title="Lien vers cette rubrique">¶</a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>groupadd<span class="w"> </span>-f<span class="w"> </span>evl
+sudo<span class="w"> </span>usermod<span class="w"> </span>-aG<span class="w"> </span>evl<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$USER</span><span class="s2">&quot;</span>
+
+cat<span class="w"> </span><span class="s">&lt;&lt;&#39;RULE&#39; | sudo tee /etc/udev/rules.d/60-evl.rules</span>
+<span class="s">SUBSYSTEM==&quot;evl&quot;, KERNEL==&quot;control&quot;, MODE=&quot;0660&quot;, GROUP=&quot;evl&quot;</span>
+<span class="s">SUBSYSTEM==&quot;evl&quot;, KERNEL==&quot;clone&quot;,   MODE=&quot;0660&quot;, GROUP=&quot;evl&quot;</span>
+<span class="s">SUBSYSTEM==&quot;evl&quot;, KERNEL==&quot;*/clone&quot;, MODE=&quot;0660&quot;, GROUP=&quot;evl&quot;</span>
+<span class="s">RULE</span>
+
+sudo<span class="w"> </span>udevadm<span class="w"> </span>control<span class="w"> </span>--reload<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>sudo<span class="w"> </span>udevadm<span class="w"> </span>trigger
+<span class="c1"># activer le groupe sans relogin</span>
+newgrp<span class="w"> </span>evl
+</pre></div>
+</div>
+</section>
+<section id="verifications">
+<h2>Vérifications<a class="headerlink" href="#verifications" title="Lien vers cette rubrique">¶</a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>which<span class="w"> </span>evl<span class="w"> </span>latmus<span class="w"> </span>hectic
+ls<span class="w"> </span>-l<span class="w"> </span>/dev/evl
+evl<span class="w"> </span>ps
+</pre></div>
+</div>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">Xenomai 4 for intel</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Sommaire</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="prerequis.html">Pré-requis &amp; principes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="noyau_evl_install.html">Noyau EVL (Xenomai 4) — Build &amp; installation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Espace utilisateur — libevl &amp; dépendances</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#but">But</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#dependance-critique-libbpf">Dépendance critique : libbpf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#compilation-installation-de-libevl">Compilation &amp; installation de libevl</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#acces-non-root-aux-devices-evl">Accès non-root aux devices EVL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#verifications">Vérifications</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="mesures_outillage.html">Mesures &amp; outillage</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="noyau_evl_install.html" title="Chapitre précédent">Noyau EVL (Xenomai 4) — Build &amp; installation</a></li>
+      <li>Next: <a href="mesures_outillage.html" title="Chapitre suivant">Mesures &amp; outillage</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2025, OUDET Lenny.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/libevl_userland.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
