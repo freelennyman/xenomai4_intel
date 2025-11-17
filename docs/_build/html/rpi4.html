@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+
+<html lang="fr" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Installation de Xenomai 4 (EVL) sur Raspberry Pi 4 &#8212; Documentation Xenomai 4 for intel 2025</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=4f649999" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=cb25574f" />
+    <script src="_static/documentation_options.js?v=431bb043"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/translations.js?v=d99ca74e"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Recherche" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="installation-de-xenomai-4-evl-sur-raspberry-pi-4">
+<h1>Installation de Xenomai 4 (EVL) sur Raspberry Pi 4<a class="headerlink" href="#installation-de-xenomai-4-evl-sur-raspberry-pi-4" title="Link to this heading">¶</a></h1>
+<p>Ce document décrit, étape par étape, comment compiler et installer
+un noyau Linux EVL/Xenomai 4 sur un Raspberry Pi 4 (64 bits), puis
+installer la bibliothèque utilisateur <strong>libevl</strong> et tester l’ensemble
+avec l’outil <code class="docutils literal notranslate"><span class="pre">latmus</span></code>.</p>
+<p>L’exemple part d’un système de type Ubuntu pour Raspberry Pi, avec un
+utilisateur standard (par exemple <code class="docutils literal notranslate"><span class="pre">ubuntu</span></code>) ayant les droits <code class="docutils literal notranslate"><span class="pre">sudo</span></code>.</p>
+<section id="verifier-le-noyau-actuel">
+<h2>1. Vérifier le noyau actuel<a class="headerlink" href="#verifier-le-noyau-actuel" title="Link to this heading">¶</a></h2>
+<p>Avant de modifier quoi que ce soit, on note la version de noyau
+actuellement utilisée. Cela permettra de revenir en arrière en cas de
+problème et de vérifier que le nouveau noyau est bien pris en compte.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uname<span class="w"> </span>-r<span class="w">          </span><span class="c1"># Affiche uniquement la version du noyau</span>
+uname<span class="w"> </span>-a<span class="w">          </span><span class="c1"># Affiche toutes les infos sur le noyau en cours</span>
+</pre></div>
+</div>
+<p>Conserver ces informations quelque part (capture, note) peut être utile
+pour la suite.</p>
+</section>
+<section id="recuperer-les-sources-du-noyau-raspberry-pi-et-evl">
+<h2>2. Récupérer les sources du noyau Raspberry Pi et EVL<a class="headerlink" href="#recuperer-les-sources-du-noyau-raspberry-pi-et-evl" title="Link to this heading">¶</a></h2>
+<p>On commence par récupérer les sources du noyau Raspberry Pi et la branche
+EVL/Xenomai 4 correspondante. L’option <code class="docutils literal notranslate"><span class="pre">--depth=1</span></code> limite l’historique
+Git pour accélérer le clonage.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Noyau Raspberry Pi</span>
+git<span class="w"> </span>clone<span class="w"> </span>--depth<span class="o">=</span><span class="m">1</span><span class="w"> </span>https://github.com/raspberrypi/linux<span class="w"> </span>~/linux
+
+<span class="c1"># Noyau Linux EVL (Xenomai 4)</span>
+git<span class="w"> </span>clone<span class="w"> </span>--depth<span class="o">=</span><span class="m">1</span><span class="w"> </span>https://source.denx.de/Xenomai/xenomai4/linux-evl<span class="w"> </span>~/linux-evl
+</pre></div>
+</div>
+<p>On suppose ici que les deux dépôts sont clonés dans le répertoire
+personnel (<code class="docutils literal notranslate"><span class="pre">~/</span></code>).</p>
+</section>
+<section id="preparer-la-configuration-du-noyau">
+<h2>3. Préparer la configuration du noyau<a class="headerlink" href="#preparer-la-configuration-du-noyau" title="Link to this heading">¶</a></h2>
+<p>On installe d’abord les dépendances nécessaires à la compilation du noyau
+Linux (outils de build, bibliothèques, etc.).</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>apt<span class="w"> </span>update
+sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>git<span class="w"> </span>bc<span class="w"> </span>bison<span class="w"> </span>flex<span class="w"> </span>libssl-dev<span class="w"> </span>make<span class="w"> </span>libncurses-dev
+</pre></div>
+</div>
+<p>On se place ensuite dans les sources du noyau Raspberry Pi pour générer
+une configuration de base adaptée au Raspberry Pi 4 (bcm2711).</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>~/linux
+
+<span class="c1"># Charge une configuration par défaut pour Raspberry Pi 4 (aarch64)</span>
+make<span class="w"> </span>bcm2711_defconfig
+</pre></div>
+</div>
+<p>Cette étape crée un fichier <code class="docutils literal notranslate"><span class="pre">.config</span></code> de base dans <code class="docutils literal notranslate"><span class="pre">~/linux</span></code>. On va
+s’en servir comme point de départ pour la configuration du noyau EVL.</p>
+</section>
+<section id="copier-et-ajuster-la-configuration-dans-le-noyau-evl">
+<h2>4. Copier et ajuster la configuration dans le noyau EVL<a class="headerlink" href="#copier-et-ajuster-la-configuration-dans-le-noyau-evl" title="Link to this heading">¶</a></h2>
+<p>L’idée est de partir de la configuration fonctionnelle du noyau
+Raspberry Pi, puis d’y ajouter le support EVL/Xenomai 4.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>~/linux-evl
+
+<span class="c1"># On recopie la configuration générée dans ~/linux vers le noyau EVL</span>
+cp<span class="w"> </span>~/linux/.config<span class="w"> </span>~/linux-evl/.config
+</pre></div>
+</div>
+<p>Ensuite, on ouvre le menu de configuration pour ajuster quelques options.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>make<span class="w"> </span>menuconfig
+</pre></div>
+</div>
+<p>Dans <code class="docutils literal notranslate"><span class="pre">menuconfig</span></code> :</p>
+<ol class="arabic">
+<li><p><strong>Changer le suffixe de version du noyau</strong></p>
+<p>Aller dans :</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">General</span> <span class="pre">setup</span></code> → <code class="docutils literal notranslate"><span class="pre">Local</span> <span class="pre">version</span> <span class="pre">-</span> <span class="pre">append</span> <span class="pre">to</span> <span class="pre">kernel</span> <span class="pre">release</span></code></p></li>
+</ul>
+<p>Remplacer par exemple <code class="docutils literal notranslate"><span class="pre">-v8</span></code> par <code class="docutils literal notranslate"><span class="pre">xeno-v8</span></code> pour pouvoir identifier
+facilement le noyau EVL/Xenomai :</p>
+<ul class="simple">
+<li><p>Mettre : <code class="docutils literal notranslate"><span class="pre">-xeno-v8</span></code></p></li>
+</ul>
+<p>Cela permettra d’obtenir plus tard une chaîne du type
+<code class="docutils literal notranslate"><span class="pre">6.12.55xeno-v8+</span></code> lors d’un <code class="docutils literal notranslate"><span class="pre">uname</span> <span class="pre">-r</span></code>.</p>
+</li>
+<li><p><strong>Vérifier le support du fichier .config</strong></p>
+<p>S’assurer que l’option de support de la configuration du noyau est
+activée (cela permet notamment de retrouver la configuration utilisée
+directement depuis <code class="docutils literal notranslate"><span class="pre">/proc/config.gz</span></code>).</p>
+<p>L’option correspondante est généralement :</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">General</span> <span class="pre">setup</span></code> → <code class="docutils literal notranslate"><span class="pre">Kernel</span> <span class="pre">.config</span> <span class="pre">support</span></code> → <strong>[Y]</strong></p></li>
+</ul>
+</li>
+<li><p><strong>Activer le cœur temps réel EVL</strong></p>
+<p>Dans <code class="docutils literal notranslate"><span class="pre">menuconfig</span></code>, aller dans la section spécifique au noyau EVL,
+par exemple :</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Kernel</span> <span class="pre">Features</span></code> ou une section similaire → activer
+<strong>EVL real-time core</strong> (ou équivalent), afin d’intégrer le cœur
+temps réel EVL dans le noyau.</p></li>
+</ul>
+</li>
+</ol>
+<p>Après cela, on peut sauvegarder et quitter <code class="docutils literal notranslate"><span class="pre">menuconfig</span></code>.</p>
+<p>Pour être sûr que Xenomai/EVL est bien activé, vérifier (ou forcer) les
+entrées suivantes dans <code class="docutils literal notranslate"><span class="pre">.config</span></code> :</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Dans ~/linux-evl/.config, vérifier la présence des lignes :</span>
+<span class="nv">CONFIG_XENOMAI</span><span class="o">=</span>y
+<span class="nv">CONFIG_XENOMAI_CORE</span><span class="o">=</span>y
+</pre></div>
+</div>
+<p>Si nécessaire, les ajouter manuellement, puis relancer un
+<code class="docutils literal notranslate"><span class="pre">make</span> <span class="pre">oldconfig</span></code> pour vérifier la cohérence des options :</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>make<span class="w"> </span>oldconfig
+</pre></div>
+</div>
+</section>
+<section id="compilation-du-noyau-evl-pour-raspberry-pi-4">
+<h2>5. Compilation du noyau EVL pour Raspberry Pi 4<a class="headerlink" href="#compilation-du-noyau-evl-pour-raspberry-pi-4" title="Link to this heading">¶</a></h2>
+<p>Une fois la configuration prête, on compile le noyau, les modules et les
+Device Tree Blobs (DTBs). L’option <code class="docutils literal notranslate"><span class="pre">-j4</span></code> utilise 4 cœurs de compilation
+(adapter selon le nombre de cœurs disponibles).</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>~/linux-evl
+
+make<span class="w"> </span>-j4<span class="w"> </span>Image<span class="w"> </span>modules<span class="w"> </span>dtbs
+</pre></div>
+</div>
+<p>Cette étape peut prendre un certain temps et nécessite de la mémoire
+(disque et RAM). À la fin, on dispose d’un noyau EVL compilé, de ses
+modules et des fichiers Device Tree associés.</p>
+</section>
+<section id="installation-du-noyau-et-des-modules">
+<h2>6. Installation du noyau et des modules<a class="headerlink" href="#installation-du-noyau-et-des-modules" title="Link to this heading">¶</a></h2>
+<p>On installe d’abord les modules du noyau dans le système :</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>make<span class="w"> </span>modules_install
+</pre></div>
+</div>
+<p>Ensuite, on installe le noyau et les DTB dans la partition de boot
+(ici <code class="docutils literal notranslate"><span class="pre">/boot/firmware</span></code>, chemin standard sur Ubuntu pour Raspberry Pi) :</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copier les DTB (description matériel) Broadcom</span>
+sudo<span class="w"> </span>cp<span class="w"> </span>arch/arm64/boot/dts/broadcom/*.dtb<span class="w"> </span>/boot/firmware
+
+<span class="c1"># Copier l’image du noyau en remplaçant kernel8.img</span>
+sudo<span class="w"> </span>cp<span class="w"> </span>arch/arm64/boot/Image<span class="w"> </span>/boot/firmware/kernel8.img
+</pre></div>
+</div>
+<p><strong>Attention :</strong> cette dernière commande remplace le noyau existant
+<code class="docutils literal notranslate"><span class="pre">kernel8.img</span></code>. Il peut être prudent de faire une sauvegarde préalable
+du fichier original (par exemple <code class="docutils literal notranslate"><span class="pre">kernel8.img.bak</span></code>).</p>
+</section>
+<section id="configuration-du-boot-config-txt">
+<h2>7. Configuration du boot (config.txt)<a class="headerlink" href="#configuration-du-boot-config-txt" title="Link to this heading">¶</a></h2>
+<p>On configure maintenant le Raspberry Pi pour qu’il démarre sur ce nouveau
+noyau EVL/Xenomai et applique l’overlay EVL.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>nano<span class="w"> </span>/boot/firmware/config.txt
+</pre></div>
+</div>
+<p>Ajouter (ou modifier) les lignes suivantes :</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>kernel=kernel8.img
+dtoverlay=evl
+</pre></div>
+</div>
+<p>Sauvegarder puis quitter l’éditeur. Au prochain redémarrage, le Pi
+chargera le noyau EVL.</p>
+<p>Après redémarrage, vérifier que le nouveau noyau est bien actif :</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uname<span class="w"> </span>-a
+</pre></div>
+</div>
+<p>Un résultat attendu ressemble à :</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Linux raspberrypi 6.12.55xeno-v8+ #1 SMP PREEMPT EVL Thu Nov 13 07:01:35 GMT 2025 aarch64 GNU/Linux
+</pre></div>
+</div>
+<p>La présence de <code class="docutils literal notranslate"><span class="pre">xeno-v8</span></code> et de <code class="docutils literal notranslate"><span class="pre">EVL</span></code> indique que le noyau temps réel
+EVL est correctement chargé.</p>
+</section>
+<section id="installation-de-libevl-espace-utilisateur">
+<h2>8. Installation de libevl (espace utilisateur)<a class="headerlink" href="#installation-de-libevl-espace-utilisateur" title="Link to this heading">¶</a></h2>
+<p>Pour utiliser les services EVL côté utilisateur, on installe la
+bibliothèque <strong>libevl</strong>.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Récupération des sources</span>
+git<span class="w"> </span>clone<span class="w"> </span>https://source.denx.de/Xenomai/xenomai4/libevl<span class="w"> </span>~/libevl
+
+<span class="c1"># Répertoire de build séparé</span>
+mkdir<span class="w"> </span>~/libevl-build
+<span class="nb">cd</span><span class="w"> </span>~/libevl-build
+</pre></div>
+</div>
+<p>On installe la dépendance <code class="docutils literal notranslate"><span class="pre">libbpf-dev</span></code>, nécessaire pour certaines
+fonctionnalités de libevl :</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>apt-get<span class="w"> </span>update
+sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>libbpf-dev
+</pre></div>
+</div>
+<p>On configure ensuite la compilation via Meson. On indique le type de
+build, le préfixe d’installation et le chemin vers les en-têtes UAPI du
+noyau EVL (<code class="docutils literal notranslate"><span class="pre">~/linux-evl</span></code>) :</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>meson<span class="w"> </span>setup<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-Dbuildtype<span class="o">=</span>release<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-Dprefix<span class="o">=</span>/usr/local<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-Duapi<span class="o">=</span>~/linux-evl<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>~/libevl
+</pre></div>
+</div>
+<p>Puis on compile :</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>meson<span class="w"> </span>compile
+</pre></div>
+</div>
+<p>Et on installe la bibliothèque :</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>ninja<span class="w"> </span>install
+</pre></div>
+</div>
+</section>
+<section id="configuration-de-ledition-de-liens-ld-so">
+<h2>9. Configuration de l’édition de liens (ld.so)<a class="headerlink" href="#configuration-de-ledition-de-liens-ld-so" title="Link to this heading">¶</a></h2>
+<p>On s’assure que le chargeur de bibliothèques dynamique (<code class="docutils literal notranslate"><span class="pre">ld.so</span></code>) sait où
+trouver <code class="docutils literal notranslate"><span class="pre">libevl</span></code> installée dans <code class="docutils literal notranslate"><span class="pre">/usr/local</span></code>. On ajoute le répertoire
+à la configuration de <code class="docutils literal notranslate"><span class="pre">ld.so</span></code> :</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;/usr/local/lib/aarch64-linux-gnu&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sudo<span class="w"> </span>tee<span class="w"> </span>-a<span class="w"> </span>/etc/ld.so.conf.d/libevl.conf
+</pre></div>
+</div>
+<p>Puis on recharge la configuration :</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>ldconfig
+</pre></div>
+</div>
+<p>On peut également exporter la variable d’environnement
+<code class="docutils literal notranslate"><span class="pre">LD_LIBRARY_PATH</span></code> pour les sessions shell (optionnel si <code class="docutils literal notranslate"><span class="pre">ldconfig</span></code>
+est correctement configuré) :</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span>/usr/local/lib:<span class="nv">$LD_LIBRARY_PATH</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH&#39;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>~/.bashrc
+<span class="nb">source</span><span class="w"> </span>~/.bashrc
+</pre></div>
+</div>
+<p><strong>Remarque :</strong> corriger toute faute de frappe éventuelle, par exemple
+éviter <code class="docutils literal notranslate"><span class="pre">SLD_LIBRARY_PATH</span></code> qui est incorrect.</p>
+</section>
+<section id="test-du-systeme-evl-avec-latmus">
+<h2>10. Test du système EVL avec latmus<a class="headerlink" href="#test-du-systeme-evl-avec-latmus" title="Link to this heading">¶</a></h2>
+<p>À ce stade, le noyau EVL est installé et <code class="docutils literal notranslate"><span class="pre">libevl</span></code> est disponible.
+On peut tester le fonctionnement en temps réel avec l’outil
+<strong>latmus</strong> (installé dans <code class="docutils literal notranslate"><span class="pre">/usr/local/bin</span></code>) :</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>/usr/local/bin
+sudo<span class="w"> </span>./latmus
+</pre></div>
+</div>
+<p>L’exécution de <code class="docutils literal notranslate"><span class="pre">latmus</span></code> en tant que superutilisateur permet de mesurer
+les latences du système EVL/Xenomai sur le Raspberry Pi 4. En observant
+les résultats, on peut vérifier que le système répond bien aux attentes
+en termes de temps réel dur.</p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">Xenomai 4 for intel</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Sommaire</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="prerequis.html">Pré-requis &amp; principes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="noyau_evl_install.html">Noyau EVL (Xenomai 4) — Build &amp; installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="libevl_userland.html">Espace utilisateur — libevl &amp; dépendances</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mesures_outillage.html">Mesures &amp; outillage</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Recherche rapide</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2025, OUDET Lenny.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.2.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/rpi4.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
