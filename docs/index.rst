@@ -15,4 +15,5 @@ puis l’installation de **libevl** et les **premières mesures** de latence.
    noyau_evl_install
    libevl_userland
    mesures_outillage
+   rpi4
 
